@@ -16,4 +16,5 @@ pip install robotframework-capturefast
 Dependencies are automatically installed.
 
 
-You can reach the sample project at : https://github.com/CaptureFastSupport/Capturefast-bridge-library-for-Robocorp-example
+You can reach the sample project at : https://github.com/CaptureFastSupport/Capturefast-bridge-library-for-Robocorp
+

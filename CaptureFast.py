@@ -4,7 +4,6 @@ import json
 import time
 import ntpath
 import os
-from RPA.Robocloud.Secrets import Secrets
 
 
 class CaptureFastBase:
@@ -13,30 +12,23 @@ class CaptureFastBase:
     def _init_client(self):
         headers = {'content-type': 'application/x-www-form-urlencoded'}
 
-        secrets = Secrets()
-        USER_NAME = secrets.get_secret("credentials")["username"]
-        PASSWORD = secrets.get_secret("credentials")["password"]
-
         authRequest = {
-            "username": USER_NAME,
-            "password": PASSWORD,
+            "username": self.cfusername,
+            "password": self.cfpassword,
             "grant_type": "password"
         }
 
         response = requests.request(
-            "POST", "https://api.capturefast.com/token",
-            headers=headers,
-            data=authRequest
+        "POST", "https://api.capturefast.com/token",
+        headers=headers,
+        data=authRequest
         )
 
-        self.accesstoken = response.json().get('access_token')
-        return self.accesstoken
+        if not response.json().get('access_token'):
+            raise Exception(response.json().get('error_description'))
 
-    def GetAccessToken(self):
-        return self.accesstoken
-        
-    def CaptureFastTest(self):
-        return "CaptureFast is running..."
+        time.sleep(1)
+        self.accesstoken = response.json().get('access_token')
 
     def UploadDocument(self, filePath, documentTypeId):
         fileContent = ''
@@ -45,25 +37,27 @@ class CaptureFastBase:
 
         headers = {
             'content-type': 'application/json',
-            'Authorization': 'Bearer ' + self.accesstoken 
+            'Authorization': 'Bearer ' + self.accesstoken
         }
 
-        secrets = Secrets()
-        teamid = secrets.get_secret("credentials")["teamid"]
-
         document = {
-            'TeamId': teamid,
+            'TeamId':  self.teamid,
             'DocumentTypeId': documentTypeId,
             'Files': [{'FileName': os.path.basename(filePath),
                        'Content': fileContent}]
         }
+        try:
+            response = requests.request("POST",
+                                        "https://api.capturefast.com/api/Upload/Document",
+                                        headers=headers,
+                                        data=json.dumps(document))
 
-        response = requests.request("POST",
-                                    "https://api.capturefast.com/api/Upload/Document",
-                                    headers=headers,
-                                    data=json.dumps(document))
+            if(response.json().get('ResultCode') != 0):
+                raise Exception(response.json().get('ResultMessage'))
 
-        return response.json().get('DocumentId')
+            return response.json().get('DocumentId')
+        except:
+            raise Exception("Capturefast Communication Error")
 
     def GetDocumentData(self, documentId, timeoutInSeconds=100):
         headers = {
@@ -78,8 +72,12 @@ class CaptureFastBase:
 
             if(timeoutInSeconds < 0):
                 raise Exception("Sorry, data is not available")
-            
-            response = requests.request("GET", "https://api.capturefast.com/api/Download/Data?documentId=" + str(documentId), headers= headers)
+            try:
+                response = requests.request("GET",
+                                            "https://api.capturefast.com/api/Download/Data?documentId=" + str(documentId),
+                                            headers=headers)
+            except:
+                raise Exception("Capturefast Communication Error")
 
             jsonDoc = response.json()
 
@@ -97,17 +95,15 @@ class CaptureFastBase:
         return jsonDoc
 
 
-class DocService(CaptureFastBase):
-    def __init__(self) -> None:
-        self._init_client()
-
-
-class CaptureFast(DocService):
+class CaptureFast(CaptureFastBase):
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
     ROBOT_LIBRARY_DOC_FORMAT = "REST"
 
-    def __init__(self):
-        DocService.__init__(self)
+    def __init__(self, username: str = None, password: str = None, teamid: str = None):
+        self.cfusername = username
+        self.cfpassword = password
+        self.teamid = teamid
+        self._init_client()
 
 
 
