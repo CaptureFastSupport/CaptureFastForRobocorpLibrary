@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import requests
 import base64
 import json
@@ -30,9 +31,18 @@ class CaptureFastBase:
         time.sleep(1)
         self.accesstoken = response.json().get('access_token')
 
-    def UploadDocument(self, filePath, documentTypeId):
+    def UploadDocument(self, filepath, documenttypeid):
+        """Method used to upload your documents to Capturefast.
+
+        Args:
+            filepath(str):      path of the document to be uploaded
+            documenttypeid(int):        ID of the document you used in Capturefast
+
+        Returns:
+            int:   The documentId created for the uploaded document that is created by Capturefast  and you need this documentId to get the data
+        """
         fileContent = ''
-        with open(filePath, "rb") as f:
+        with open(filepath, "rb") as f:
             fileContent = base64.b64encode(f.read()).decode('ascii')
 
         headers = {
@@ -42,8 +52,8 @@ class CaptureFastBase:
 
         document = {
             'TeamId':  self.teamid,
-            'DocumentTypeId': documentTypeId,
-            'Files': [{'FileName': os.path.basename(filePath),
+            'DocumentTypeId': documenttypeid,
+            'Files': [{'FileName': os.path.basename(filepath),
                        'Content': fileContent}]
         }
         try:
@@ -55,11 +65,57 @@ class CaptureFastBase:
             if(response.json().get('ResultCode') != 0):
                 raise Exception(response.json().get('ResultMessage'))
 
-            return response.json().get('DocumentId')
-        except:
+        except Exception as ex:
             raise Exception("Capturefast Communication Error")
 
-    def GetDocumentData(self, documentId, timeoutInSeconds=100):
+        return response.json().get('DocumentId')
+
+    def GetDocumentData(self, documentid, timeoutinseconds=100):
+        """Getting data of a document uploaded to Capturefat
+
+            Args:
+                documentid(int):      Documentid from UploadDocument method
+                timeoutinseconds(int):        The required timeout for data retrieval depending on the time the document spends in the processing phase değeri.Default 100 second.
+
+            Returns:
+                Json:   Processing and content data of the submitted document
+
+                {
+                       "DocumentName":"",
+                       "DocReferenceKey":"",
+                       "DocumentId":0,
+                       "TeamId":0,
+                       "TemplateId":0,
+                       "TemplateName":",
+                       "DocumentTypeId":0,
+                       "DocumentTypeName":"",
+                       "CapturedUserId":0,
+                       "CapturedDate":"",
+                       "CapturedUser":"",
+                       "VerifiedUserId":0,
+                       "VerifiedDate":,
+                       "VerifiedUser":,
+                       "AdditionalData":,
+                       "Pages":[
+                          {
+                             "PageId":0,
+                             "PageName":"Page #1",
+                             "PageOrder":1,
+                             "OrginalFileName":"",
+                             "Fields":[
+                                {
+                                   "FieldName":"",
+                                   "Value":"",
+                                   "ConfidenceLevel":100,
+                                   "Coordinate":""
+                                }
+                             ]
+                          }
+                       ],
+                       "ResultCode":0,
+                       "ResultMessage":""
+                }
+        """
         headers = {
             'content-type': 'application/json',
             'Authorization': 'Bearer ' + self.accesstoken
@@ -67,16 +123,17 @@ class CaptureFastBase:
 
         jsonDoc = {}
 
-        while(timeoutInSeconds > 0):
-            timeoutInSeconds -= 5
+        while(timeoutinseconds > 0):
+            timeoutinseconds -= 5
 
-            if(timeoutInSeconds < 0):
+            if(timeoutinseconds < 0):
                 raise Exception("Sorry, data is not available")
+
             try:
                 response = requests.request("GET",
-                                            "https://api.capturefast.com/api/Download/Data?documentId=" + str(documentId),
+                                            "https://api.capturefast.com/api/Download/Data?documentId=" + str(documentid),
                                             headers=headers)
-            except:
+            except Exception as ex:
                 raise Exception("Capturefast Communication Error")
 
             jsonDoc = response.json()
@@ -89,13 +146,29 @@ class CaptureFastBase:
                 continue
             else:
                 time.sleep(5)
-                jsonDoc = self.GetDocumentData(documentId, timeoutInSeconds)
+                jsonDoc = self.GetDocumentData(documentId, timeoutinseconds)
                 break
 
         return jsonDoc
 
 
 class CaptureFast(CaptureFastBase):
+    """CaptureFast is an online document capture application.
+
+    With the application, you can extract data from your documents and transfer
+    your digitalized data to the desired environment for processing.
+
+    To use the library, you can first create a user and create your document types by watching the video at https://www.youtube.com/watch?v=AMfOZBkK-M4.
+
+    Args:
+        username(str):      The username you create on Capturefast.
+        password(str):      The password you create on Capturefast.
+        teamid(str):        The team you create on Capturefast.
+
+    Returns:
+
+    Automatic token will be created from Capturefast, and you can send and receive your documents for capture using the UploadDocument and GetDocumentData methods.
+    """
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
     ROBOT_LIBRARY_DOC_FORMAT = "REST"
 

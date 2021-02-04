@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
     name = 'robotframework-capturefast',
     packages = ['.'],
-    version = '1.6.0',
+    version = '1.8.0',
     description = 'Capturefast Bridge Library For Robocorp',
     author = 'CaptureFast',
     author_email = 'support@capturefast.com',
